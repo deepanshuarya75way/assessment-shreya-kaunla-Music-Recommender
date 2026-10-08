@@ -65,9 +65,11 @@ def run_scan():
     songs=cursor.fetchall()
     print(f"Scan complete. {len(songs)} tracks found in database.")
     conn.close()
-def process(s):
-    p, i=s
-    path=os.path.join(MUSIC_FOLDER, i)
+
+model =None
+def init_worker():
+    global model 
+    import tensorflow as tf
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(None, 128)),
         
@@ -78,6 +80,11 @@ def process(s):
         tf.keras.layers.Dense(128, activation='linear')
     ])
     
+def process(s):
+    p, i=s
+    path=os.path.join(MUSIC_FOLDER, i)
+    
+    output=model(clean_tensor)
     
     if os.path.isfile(path) and i.endswith(".mp3"):
         try:
@@ -93,7 +100,7 @@ def process(s):
             blob=fingerprint.tobytes()
             return blob,path
         except Exception as e:
-            print(f"error {i}:{e}  ")
+            print(f"error {path}:{e}  ")
             return None
 
 
@@ -130,7 +137,7 @@ def mel():
             except Exception as e:
                 broken.append((os.path.join(MUSIC_FOLDER,i),))
         
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(initializer=init_worker) as pool:
         result=pool.map(process,tasks)
     for i in result:
         if(i!=None):
