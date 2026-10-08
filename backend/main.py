@@ -21,8 +21,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = r"C:\Users\lenovo\csee\music hub real scratch\sql_db.db"
-MUSIC_FOLDER = r"C:\Users\lenovo\csee\music hub real scratch\New folder"
+DB_PATH = os.path.join(r"/home/coder/workspace/assessment-shreya-kaunla-Music-Recommender/backend","sql_db.db")
+MUSIC_FOLDER = os.path.join(r"/home/coder/workspace/assessment-shreya-kaunla-Music-Recommender","New folder")
 
 @app.on_event("startup")
 def startup_scan():
@@ -90,7 +90,7 @@ def stream_audio(filename: str):
     decoded_filename = urllib.parse.unquote(filename)
     
     
-    full_audio_path = os.path.join(MUSIC_FOLDER, "sk", os.path.basename(decoded_filename))
+    full_audio_path = os.path.join(MUSIC_FOLDER, os.path.basename(decoded_filename))
     
     if not os.path.exists(full_audio_path):
         raise HTTPException(status_code=404, detail=f"Audio file not found at: {full_audio_path}")
@@ -107,7 +107,7 @@ def get_cover_art(filename: str):
         full_audio_path = decoded_path
     else:
         
-        full_audio_path = os.path.join(MUSIC_FOLDER, "sk", os.path.basename(decoded_path))
+        full_audio_path = os.path.join(MUSIC_FOLDER, os.path.basename(decoded_path))
     
     
     print(f"Targeting metadata extraction at: {full_audio_path}")
@@ -164,7 +164,7 @@ def recommender(target):
         match, match_vector=i
         array=np.frombuffer(match_vector, dtype=np.float32)
         distance = np.sqrt(np.sum((target_array - array) ** 2))
-        recommendation_queue.append({"path": os.path.join(MUSIC_FOLDER,"sk",match), "score": distance})
+        recommendation_queue.append({"path": os.path.join(MUSIC_FOLDER,match), "score": distance})
     recommendation_queue.sort(key=lambda x: x["score"])
     top_20_matches = recommendation_queue[:20]
     return top_20_matches
@@ -176,7 +176,7 @@ def recommender(target):
 # Inside Main.py -> @app.post("/api/recommendations")
 @app.post("/api/recommendations")
 def get_music_recommendations(request: RecommendationRequest):
-    real_disk_path = os.path.join(MUSIC_FOLDER, "sk", request.file_path)
+    real_disk_path = os.path.join(MUSIC_FOLDER, request.file_path)
     
     if not os.path.exists(real_disk_path):
         raise HTTPException(status_code=404, detail=f"Target audio file path not found: {real_disk_path}")
@@ -200,3 +200,16 @@ def get_music_recommendations(request: RecommendationRequest):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Recommendation engine error: {str(e)}")
+from pydantic import BaseModel
+from fastapi import HTTPException
+class Recalculations(BaseModel):
+    track_ids:list[int]
+
+def init_mood_tables():
+   conn=sql.connect(DB_PATH)
+    cursor=conn.cursor()
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS mood_labels(id INTEGER PRIMARY KEY AUTOINCREMET, name TEXT UNIQUE NOT NULL);""")
+        cursor.execute("""CREATE TABLE IF NOT EXISTS track_mood_mappings(track_id INTEGER, label_id INTEGER, confidence_score REAL NOT NULL, 
+        is_confident BOOLEAN NOT NULL CHECK(is_confident IN (0,1)), PRIMARY KEY(track_id, label_id)); """)
+        for label in ["Focus", "Exercise", "Relaxi"]
