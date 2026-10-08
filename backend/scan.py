@@ -7,7 +7,7 @@ from tinytag import TinyTag
 import os
 import tensorflow as tf
 import multiprocessing
-DB_PATH = os.path.join(r"/home/coder/workspace/assessment-shreya-kaunla-Music-Recommender/backend","sql_db.db")
+DB_PATH = "sql_db.db"
 MUSIC_FOLDER = os.path.join(r"/home/coder/workspace/assessment-shreya-kaunla-Music-Recommender","New folder")
 l=[]
 def run_scan():
@@ -19,8 +19,16 @@ def run_scan():
                 title TEXT,
                 artist TEXT,
                 album TEXT,
-                vector_id BLOB,
-                cluster_id INTEGER )""")
+                vector_data BLOB,
+                cluster_id INTEGER );""")
+
+    cursor.execute(f"""
+        CREATE TABLE IF NOT EXISTS mood_labels(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS track_mood_mappings(track_id INTEGER, label_id INTEGER, confidence_score REAL NOT NULL, 
+        is_confident BOOLEAN NOT NULL CHECK(is_confident IN (0,1)), PRIMARY KEY(track_id, label_id),FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+        FOREIGN KEY (label_id) REFERENCES mood_labels (id) ON DELETE CASCADE); """)
+    for label in ["Focus", "Exercise", "Relaxing", "Melancholic","Energetic"]:
+        cursor.execute("INSERT OR IGNORE INTO mood_labels(name) VALUES(?);", (label,))
     conn.commit()
     list=os.listdir(MUSIC_FOLDER)
     for i in list:
@@ -59,7 +67,7 @@ def run_scan():
     conn.close()
 def process(s):
     p, i=s
-    path=os.path.join(p,i)
+    path=os.path.join(MUSIC_FOLDER, i)
     model = tf.keras.Sequential([
         tf.keras.layers.Input(shape=(None, 128)),
         
@@ -83,7 +91,7 @@ def process(s):
             output=model(clean_tensor)
             fingerprint=output.numpy().flatten()
             blob=fingerprint.tobytes()
-            return blob,i
+            return blob,path
         except Exception as e:
             print(f"error {i}:{e}  ")
             return None

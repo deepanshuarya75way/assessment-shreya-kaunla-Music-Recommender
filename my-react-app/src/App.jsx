@@ -18,7 +18,9 @@ const [isPlaying, setIsPlaying] = useState(false);
 const [trackProgress, setTrackProgress] = useState(0);
 const [trackDuration, setTrackDuration] = useState(0);
 const [queue, setQueue] = useState([]); 
-const [expandedCategory, setExpandedCategory] = useState(null); 
+const [expandedCategory, setExpandedCategory] = useState(null);
+
+
 
 
 
@@ -437,5 +439,34 @@ const playPrevious = (e) => {
   );
 }
 
+
+function TrackRow({song,actualIndex,setCurrentSongIndex,setIsPlaying, setIsPopupExpanded}){
+  const [labels,setLabels]=useState([]);
+  useEffect(()=>{
+    fetch('http://localhost:8000/api/songs/${song.id}/labels')
+    .then((res)=> res.json())
+    .then((data)=>setLabels(data||[]))
+    .catch((err)=>console.error(`Error loading labels for song ${song.id}:`, err));
+  },[song.id]);
+  return(
+    
+      <li key={song.id} style={{ display: 'flex', flexDirection:'column', alignItems: 'center', margin: '12px 0', padding: '14px', borderRadius: '8px', backgroundColor: '#181818' }}>
+        <img src={`http://localhost:8000/api/cover/${encodeURIComponent(song.file_path)}`} alt="art" style={{ width: '50px', height: '50px', borderRadius: '6px', marginRight: '15px', objectFit: 'cover', background: '#282828' }} />
+        <div style={{ flexGrow: 1, overflow: 'hidden' }}>
+          <strong style={{ display: 'block', fontSize: '16px', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{song.title}</strong>
+          <span style={{ fontSize: '14px', color: '#b3b3b3' }}>{song.artist} • {song.album}</span>
+        </div>
+        <button onClick={() => { setCurrentSongIndex(actualIndex); setIsPlaying(true); setIsPopupExpanded(true); }} style={{ padding: '8px 20px', cursor: 'pointer', backgroundColor: '#1db954', color: '#fff', border: 'none', borderRadius: '20px', fontWeight: 'bold' }}>▶ Play</button>
+        <div style={{display:'flex', gap:'6px', marginTop:'10px'}}>
+          {labels.map((lbl,idx)=>(
+            <span key={idx} style={{fontSize:'11px',padding:'2px 8px', borderRadius:'12px', backgroundColor: '#1db954', color: '#fff'}}>
+              {lbl.name}{lbl.confident? '✨' : '?'}
+            </span>
+          ))}
+        </div>
+      </li>
+            
+  )
+}
 export default App;
 

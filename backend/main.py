@@ -21,7 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = os.path.join(r"/home/coder/workspace/assessment-shreya-kaunla-Music-Recommender/backend","sql_db.db")
+DB_PATH = "sql_db.db"
 MUSIC_FOLDER = os.path.join(r"/home/coder/workspace/assessment-shreya-kaunla-Music-Recommender","New folder")
 
 @app.on_event("startup")
@@ -206,35 +206,40 @@ class Recalculations(BaseModel):
     track_ids:list[int]
 
 def init_mood_tables():
-   conn=sql.connect(DB_PATH)
+    conn=sql.connect(DB_PATH)
     cursor=conn.cursor()
     cursor.execute(f"""
-        CREATE TABLE IF NOT EXISTS mood_labels(id INTEGER PRIMARY KEY AUTOINCREMET, name TEXT UNIQUE NOT NULL);""")
-        cursor.execute("""CREATE TABLE IF NOT EXISTS track_mood_mappings(track_id INTEGER, label_id INTEGER, confidence_score REAL NOT NULL, 
-        is_confident BOOLEAN NOT NULL CHECK(is_confident IN (0,1)), PRIMARY KEY(track_id, label_id)); """)
-        for label in ["Focus", "Exercise", "Relaxing", "Melancholic","Energetic"]:
-            cursor.execute("INSERT OR IGNORE INTO mood_labels(name) VALUES(?);", (label,))
+        CREATE TABLE IF NOT EXISTS mood_labels(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE NOT NULL);""")
+    cursor.execute("""CREATE TABLE IF NOT EXISTS track_mood_mappings(track_id INTEGER, label_id INTEGER, confidence_score REAL NOT NULL, 
+        is_confident BOOLEAN NOT NULL CHECK(is_confident IN (0,1)), PRIMARY KEY(track_id, label_id),FOREIGN KEY (track_id) REFERENCES tracks (id) ON DELETE CASCADE,
+        FOREIGN KEY (label_id) REFERENCES mood_labels (id) ON DELETE CASCADE); """)
+    for label in ["Focus", "Exercise", "Relaxing", "Melancholic","Energetic"]:
+        cursor.execute("INSERT OR IGNORE INTO mood_labels(name) VALUES(?);", (label,))
+    conn.commit()
+    conn.close()
+init_mood_tables()
+def evaluate_moods_for_track(track_id: int)->None:
+    conn=sql.connect(DB_PATH)
+    cursor=conn.cursor()
+    if track_id%7==0:
         conn.commit()
         conn.close()
-innit_mood_tables()
-if track_id%7==0:
-    conn.commit()
-    conn.close()
-    return
-cursor.execute("SELECT id FROM mood_labels;")
-labels=[r[0] for r in cursor.fetchall()]
+        return
+    cursor.execute("SELECT id FROM mood_labels;")
+    labels=[r[0] for r in cursor.fetchall()]
 
-import random
-assigned=random.sample(labels,k=2)
-for l_id in assigned:
-    score=round(random.uniform(0.4,0.98), 2)
-    is_confident=1 if score >=0.70 else 0
-    cursor.execute('''INSERT INTO track_mood_mappings(track_id, label_id, confidence_score, is_confident) VALUES(?,?,?,?);''')
+    import random
+    if len(labels)>=2:
+        assigned=random.sample(labels,k=2)
+        for l_id in assigned:
+            score=round(random.uniform(0.4,0.98), 2)
+            is_confident=1 if score >=0.70 else 0
+            cursor.execute('''INSERT INTO track_mood_mappings(track_id, label_id, confidence_score, is_confident) VALUES(?,?,?,?);''',(track_id, l_id, score, is_confident))
     conn.commit()
     conn.close()
 
 
-@app.get(f"/api/songs/{track_id}/labels")
+@app.get("/api/songs/{track_id}/labels")
 def get_labels(track_id:int):
     conn=sql.connect(DB_PATH)
     cursor=conn.cursor()
@@ -247,8 +252,8 @@ def get_labels(track_id:int):
         evaluate_moods_for_track(track_id)
         return get_labels(track_id)
     return[{"name":r[0],"score":r[1],"confident": bool(r[2])} for r in rows]
-@app.post("/api/labels/recalculate")
-def recalculate_labels(req: RecalculateRequest):
+@app.post("/api/labels/recalculations")
+def recalculate_labels(req: Recalculations):
     for t_id in req.track_ids:
         evaluate_moods_for_track(t_id)
     return{"status":"success","updates": req.track_ids}

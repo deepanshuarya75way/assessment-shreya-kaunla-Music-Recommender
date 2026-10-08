@@ -83,7 +83,7 @@ def process(s):
             output=model(clean_tensor)
             fingerprint=output.numpy().flatten()
             blob=fingerprint.tobytes()
-            return blob,i
+            return blob,path
         except Exception as e:
             print(f"error {i}:{e}  ")
             return None
