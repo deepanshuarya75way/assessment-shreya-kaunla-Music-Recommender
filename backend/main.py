@@ -212,4 +212,8 @@ def init_mood_tables():
         CREATE TABLE IF NOT EXISTS mood_labels(id INTEGER PRIMARY KEY AUTOINCREMET, name TEXT UNIQUE NOT NULL);""")
         cursor.execute("""CREATE TABLE IF NOT EXISTS track_mood_mappings(track_id INTEGER, label_id INTEGER, confidence_score REAL NOT NULL, 
         is_confident BOOLEAN NOT NULL CHECK(is_confident IN (0,1)), PRIMARY KEY(track_id, label_id)); """)
-        for label in ["Focus", "Exercise", "Relaxi"]
+        for label in ["Focus", "Exercise", "Relaxing", "Melancholic","Energetic"]:
+            cursor.execute("INSERT OR IGNORE INTO mood_labels(name) VALUES(?);", (label,))
+        conn.commit()
+        conn.close()
+innit_mood_tables()
