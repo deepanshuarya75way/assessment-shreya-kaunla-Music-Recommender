@@ -217,3 +217,27 @@ def init_mood_tables():
         conn.commit()
         conn.close()
 innit_mood_tables()
+if track_id%7==0:
+    conn.commit()
+    conn.close()
+    return
+cursor.execute("SELECT id FROM mood_labels;")
+labels=[r[0] for r in cursor.fetchall()]
+
+import random
+assigned=random.sample(labels,k=2)
+for l_id in assigned:
+    score=round(random.uniform(0.4,0.98), 2)
+    is_confident=1 if score >=0.70 else 0
+    cursor.execute('''INSERT INTO track_mood_mappings(track_id, label_id, confidence_score, is_confident) VALUES(?,?,?,?);''')
+    conn.commit()
+    conn.close()
+
+
+@app.get(f"/api/songs/{track_id}/labels")
+def get_labels(track_id:int):
+    conn=sql.connect(DB_PATH)
+    cursor=conn.cursor()
+    cursor.execute("""SELECT l.name, m.confidence_score, m.is_confident
+    FROM track_mood_mappings m JOIN mood_labels l ON m.label_id=l.id
+    WHERE m.track_id=?;""",(track_id,))
