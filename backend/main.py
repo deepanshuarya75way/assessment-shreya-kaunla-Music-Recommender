@@ -241,3 +241,14 @@ def get_labels(track_id:int):
     cursor.execute("""SELECT l.name, m.confidence_score, m.is_confident
     FROM track_mood_mappings m JOIN mood_labels l ON m.label_id=l.id
     WHERE m.track_id=?;""",(track_id,))
+    row=cursor.fetchall()
+    conn.close()
+    if not rows:
+        evaluate_moods_for_track(track_id)
+        return get_labels(track_id)
+    return[{"name":r[0],"score":r[1],"confident": bool(r[2])} for r in rows]
+@app.post("/api/labels/recalculate")
+def recalculate_labels(req: RecalculateRequest):
+    for t_id in req.track_ids:
+        evaluate_moods_for_track(t_id)
+    return{"status":"success","updates": req.track_ids}
